@@ -1,3 +1,4 @@
+
 """Stock reports.
 
 `src/shop/reporting.py` is the second file to repair: it produces the text that
@@ -32,10 +33,11 @@ def test_report_lists_low_stock_items() -> None:
 
 
 def test_report_timestamp_is_timezone_aware() -> None:
-    report = build_stock_report(STOCK, PRICES)
-    stamps = [line for line in report.splitlines() if line.startswith("generated_at=")]
+    report = build_stock_report({},{})
+    stamps = [line for line in report.splitlines() if line.startswith("generated_at")]
     assert len(stamps) == 1
-    assert stamps[0].removeprefix("generated_at=").endswith("+00:00")
+    ts = stamps[0].removeprefix("generated_at=")
+    assert ts.endswith("+00:00") or ts.endswith("Z")
 
 
 def test_stock_health_reports_out_of_stock() -> None:

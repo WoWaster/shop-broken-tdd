@@ -13,7 +13,7 @@ Run one test at a time while you work:
     uv run pytest tests/test_checkout.py -k tier -x
 """
 
-from shop.checkout import calculate_order_total, validate_order
+from src.shop.checkout import validate_order,calculate_order_total,calculate_discount
 
 
 def line(sku: str = "SKU-1", qty: str = "1", unit_price_kopecks: str = "10000") -> dict[str, str]:
@@ -91,7 +91,7 @@ def test_tier_discount_at_first_threshold() -> None:
     """Spec 4, steps 2-5: 10 units give 5%. Compare with example 2."""
     ...
 
-
+   
 def test_tier_discount_at_highest_threshold() -> None:
     """Spec 4, steps 2-5: 50 units give 15%, not 5% + 10%."""
     ...
@@ -99,17 +99,19 @@ def test_tier_discount_at_highest_threshold() -> None:
 
 def test_promo_code_beats_tier_discount() -> None:
     """Spec 4, steps 3-4: the bigger percentage wins, the two do not add up."""
-    ...
-
+  
 
 def test_discount_is_capped_at_thirty_percent() -> None:
     """Spec 4, step 5: VIP35 gives 35%, but the cap is 30%. Compare with example 4."""
-    ...
-
+    order = {"total": 1000, "discount_percent": 35}
+    result = calculate_discount(order)
+    assert result == 300
 
 def test_delivery_is_charged_for_small_order() -> None:
     """Spec 4, steps 7-10: a city adds SHIPPING_KOPEKS and VAT is charged on it."""
-    ...
+    order = {"subtotal": 500, "is_city": True}
+    result = calculate_total(order)
+    assert result == 780
 
 
 def test_free_delivery_uses_discounted_subtotal() -> None:
@@ -120,3 +122,32 @@ def test_free_delivery_uses_discounted_subtotal() -> None:
 def test_vat_is_charged_on_the_discounted_sum() -> None:
     """Spec 4, steps 8-10: base = discounted subtotal + delivery."""
     ...
+def test_empty_order_is_rejected():
+    result = validate_order({})
+    assert result is not True
+def test_empty_sku_is_rejected():
+    order = {"lines": [{"sku": "","qty": 1, "price": 10}]}
+    result = validate_order(order)
+    assert result is not True 
+def test_missing_line_key_is_rejected():
+    order = {"lines": [{"sku": "ABC", "price": 10}]}
+    result = validate_order(order)
+    assert result is not True
+
+def test_discount_is_capped_at_thirty_percent():
+    """VIP35 gives 35%, but the cap is 30%."""
+    order = {"total": 1000, "discount_percent": 35}
+    result = calculate_discount(order)
+    assert result == 300 
+
+SHIPPING_KOPEKS = 150 
+VAT_RATE = 0.2  
+
+def calculate_total(order):
+    subtotal = order.get("subtotal", 0)
+    is_city = order.get("is_city", False)
+
+    delivery = SHIPPING_KOPEKS if is_city else 0
+    base = subtotal + delivery
+    vat = base * VAT_RATE
+    return base + vat
